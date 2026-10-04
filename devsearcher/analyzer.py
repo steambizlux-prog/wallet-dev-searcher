@@ -188,6 +188,8 @@ def evaluate_dev(stats: DevStats, settings: Settings) -> Verdict:
         reasons.append(f"запусков {stats.total} < минимума {settings.min_dev_tokens}")
     if stats.total > settings.max_dev_tokens:
         reasons.append(f"запусков {stats.total} > максимума {settings.max_dev_tokens}")
+    if stats.migrated < settings.min_migrated_count:
+        reasons.append(f"мигрейтов {stats.migrated} шт < минимума {settings.min_migrated_count} шт")
     if stats.ratio_percent < settings.min_migrate_percent:
         reasons.append(
             f"мигрейтов {stats.ratio_percent:.1f}% ({stats.migrated}/{stats.total}) "

@@ -132,3 +132,14 @@ def test_platform_matches_is_lenient_about_spelling():
     assert platform_matches("", ("Pump.fun",))
     assert not platform_matches("letsbonk", ("Pump.fun",))
     assert not platform_matches("pump_mayhem", ("Pump.fun",))
+
+
+def test_evaluate_dev_min_migrated_count():
+    st = Settings(min_migrate_percent=0, min_migrated_count=2)
+    assert evaluate_dev(parse_dev_stats({"inner_count": 98, "open_count": 2}, "w"), st).passed
+    v = evaluate_dev(parse_dev_stats({"inner_count": 99, "open_count": 1}, "w"), st)
+    assert not v.passed and "1 шт < минимума 2 шт" in v.reasons[0]
+    # штуки и процент работают вместе: 2 из 100 = 2 % < 5 %
+    both = Settings(min_migrate_percent=5, min_migrated_count=2)
+    v2 = evaluate_dev(parse_dev_stats({"inner_count": 98, "open_count": 2}, "w"), both)
+    assert not v2.passed and len(v2.reasons) == 1 and "%" in v2.reasons[0]

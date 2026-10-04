@@ -26,6 +26,7 @@ BOT_COMMANDS = [
     BotCommand(command="settings", description="Настройки фильтра"),
     BotCommand(command="set_fee", description="Мин. fee токена (SOL)"),
     BotCommand(command="set_migrate", description="Мин. % мигрейтов у дева"),
+    BotCommand(command="set_minmigrated", description="Мин. мигрейтов у дева, шт"),
     BotCommand(command="set_maxtokens", description="Макс. токенов у дева"),
     BotCommand(command="platforms", description="Лаунчпады"),
     BotCommand(command="platforms_seen", description="Какие лаунчпады видит GMGN"),

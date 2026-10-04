@@ -79,6 +79,11 @@ def settings_keyboard(ctx: BotContext) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="+1%", callback_data="adj:min_migrate_percent:1"),
         ],
         [
+            InlineKeyboardButton(text="−1", callback_data="adj:min_migrated_count:-1"),
+            InlineKeyboardButton(text=f"мигрейтов ≥ {s.min_migrated_count} шт", callback_data="noop"),
+            InlineKeyboardButton(text="+1", callback_data="adj:min_migrated_count:1"),
+        ],
+        [
             InlineKeyboardButton(text="−100", callback_data="adj:max_dev_tokens:-100"),
             InlineKeyboardButton(text=f"токенов ≤ {s.max_dev_tokens}", callback_data="noop"),
             InlineKeyboardButton(text="+100", callback_data="adj:max_dev_tokens:100"),
@@ -152,6 +157,10 @@ def build_router(ctx: BotContext) -> Router:
     @router.message(Command("set_migrate"))
     async def cmd_set_migrate(message: Message, command: CommandObject) -> None:
         await _single(message, command, "min_migrate_percent", "/set_migrate 5")
+
+    @router.message(Command("set_minmigrated"))
+    async def cmd_set_minmigrated(message: Message, command: CommandObject) -> None:
+        await _single(message, command, "min_migrated_count", "/set_minmigrated 2")
 
     @router.message(Command("set_maxtokens"))
     async def cmd_set_maxtokens(message: Message, command: CommandObject) -> None:

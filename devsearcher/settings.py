@@ -37,6 +37,8 @@ class Settings:
     min_fee_sol: float = 2.0
     # Минимальная доля мигрейтов у дева, в процентах (5 = 5 %).
     min_migrate_percent: float = 5.0
+    # Минимальное число мигрейтов у дева в штуках (0 = не проверять). Работает вместе с процентом.
+    min_migrated_count: int = 0
     # Максимум запущенных токенов на одном кошельке.
     max_dev_tokens: int = 1000
     # Минимум запущенных токенов (чтобы отсеять девов с 1–2 запусками).
@@ -67,6 +69,10 @@ class Settings:
             raise SettingsError("min_migrate_percent должен быть от 0 до 100")
         if self.max_dev_tokens < 1:
             raise SettingsError("max_dev_tokens должен быть >= 1")
+        if self.min_migrated_count < 0:
+            raise SettingsError("min_migrated_count должен быть >= 0")
+        if self.min_migrated_count > self.max_dev_tokens:
+            raise SettingsError("min_migrated_count не может быть больше max_dev_tokens")
         if self.min_dev_tokens < 0:
             raise SettingsError("min_dev_tokens должен быть >= 0")
         if self.min_dev_tokens > self.max_dev_tokens:
@@ -129,7 +135,8 @@ def coerce_value(name: str, raw: Any) -> Any:
             return float(str(raw).replace(",", ".").replace("%", "").strip())
         except ValueError as exc:
             raise SettingsError(f"{name}: нужно число, получено {raw!r}") from exc
-    if name in ("max_dev_tokens", "min_dev_tokens", "poll_interval_sec", "max_token_age_min", "dev_cooldown_hours"):
+    if name in ("max_dev_tokens", "min_dev_tokens", "min_migrated_count", "poll_interval_sec",
+                "max_token_age_min", "dev_cooldown_hours"):
         try:
             return int(float(str(raw).strip()))
         except ValueError as exc:
@@ -207,6 +214,7 @@ class SettingsStore:
 SETTING_LABELS: tuple[tuple[str, str, str], ...] = (
     ("min_fee_sol", "Мин. fee токена", "SOL"),
     ("min_migrate_percent", "Мин. доля мигрейтов", "%"),
+    ("min_migrated_count", "Мин. мигрейтов", "шт"),
     ("max_dev_tokens", "Макс. токенов у дева", "шт"),
     ("min_dev_tokens", "Мин. токенов у дева", "шт"),
     ("platforms", "Платформы", ""),

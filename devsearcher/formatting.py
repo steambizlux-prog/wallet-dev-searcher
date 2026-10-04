@@ -74,7 +74,7 @@ def format_settings(s: Settings) -> str:
         lines.append(f"• {esc(label)}: <b>{esc(val)}</b>{esc(unit_s)}  <code>{name}</code>")
     lines.append("")
     lines.append("Изменить: <code>/set &lt;имя&gt; &lt;значение&gt;</code>, например <code>/set min_fee_sol 2.5</code>")
-    lines.append("Быстрые команды: /set_fee, /set_migrate, /set_maxtokens, /platforms, /pause, /resume")
+    lines.append("Быстрые команды: /set_fee, /set_migrate, /set_minmigrated, /set_maxtokens, /platforms, /pause, /resume")
     return "\n".join(lines)
 
 
@@ -164,8 +164,8 @@ def format_dev_check(stats: DevStats, verdict: Verdict, settings: Settings) -> s
         lines += [f"• {esc(r)}" for r in verdict.reasons]
     lines.append("")
     lines.append(
-        f"Критерии: мигрейтов ≥ {settings.min_migrate_percent:g}%, запусков "
-        f"{settings.min_dev_tokens}–{settings.max_dev_tokens}"
+        f"Критерии: мигрейтов ≥ {settings.min_migrate_percent:g}% и ≥ {settings.min_migrated_count} шт, "
+        f"запусков {settings.min_dev_tokens}–{settings.max_dev_tokens}"
     )
     return "\n".join(lines)
 
@@ -196,7 +196,8 @@ def format_status(info: dict[str, Any], settings: Settings, counters: dict[str, 
     lines.append(f"• Девов проверено: {counters.get('devs_checked', 0)}")
     lines.append(f"• Совпадений: {counters.get('matches', 0)} (повторы дева: {counters.get('dup_dev', 0)})")
     lines.append("")
-    lines.append(f"Фильтр: fee ≥ {settings.min_fee_sol:g} SOL, мигрейтов ≥ {settings.min_migrate_percent:g}%, "
+    lines.append(f"Фильтр: fee ≥ {settings.min_fee_sol:g} SOL, мигрейтов ≥ {settings.min_migrate_percent:g}% "
+                 f"и ≥ {settings.min_migrated_count} шт, "
                  f"запусков {settings.min_dev_tokens}–{settings.max_dev_tokens}, "
                  f"платформы: {esc(', '.join(settings.platforms))}")
     return "\n".join(lines)
@@ -225,6 +226,7 @@ HELP_TEXT = """🤖 <b>Dev Wallet Searcher</b>
 /set &lt;имя&gt; &lt;значение&gt; — изменить любую настройку
 /set_fee &lt;SOL&gt; — минимальный fee токена
 /set_migrate &lt;%&gt; — минимальная доля мигрейтов у дева
+/set_minmigrated &lt;N&gt; — минимум мигрейтов у дева в штуках
 /set_maxtokens &lt;N&gt; — максимум запусков у дева
 /set_mintokens &lt;N&gt; — минимум запусков у дева
 /platforms [список] — показать/задать лаунчпады (pump, bonk, stonk, ...)

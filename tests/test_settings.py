@@ -50,6 +50,9 @@ def test_validation():
     with pytest.raises(SettingsError):
         Settings(fee_unit="eur").validate()
     with pytest.raises(SettingsError):
+        Settings(min_migrated_count=-1).validate()
+    assert coerce_value("min_migrated_count", "3") == 3
+    with pytest.raises(SettingsError):
         Settings(poll_interval_sec=1).validate()
 
 
