@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# wallet-dev-searcher
+.env
+data/
+venv/
+*.db
+*.pem

@@ -1,0 +1,25 @@
+[Unit]
+Description=Wallet Dev Searcher (GMGN migrations -> dev wallet check -> Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=devsearcher
+WorkingDirectory=/opt/wallet-dev-searcher
+EnvironmentFile=/opt/wallet-dev-searcher/.env
+ExecStart=/opt/wallet-dev-searcher/venv/bin/python -m devsearcher
+Restart=always
+RestartSec=5
+# журнал: journalctl -u wallet-dev-searcher -f
+StandardOutput=journal
+StandardError=journal
+
+# немного изоляции
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/wallet-dev-searcher/data
+
+[Install]
+WantedBy=multi-user.target
