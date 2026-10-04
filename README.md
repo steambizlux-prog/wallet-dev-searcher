@@ -34,6 +34,18 @@ sudo systemctl restart wallet-dev-searcher
 sudo journalctl -u wallet-dev-searcher -f
 ```
 
+Одной строкой (от root): клонирует ветку и запускает установку:
+
+```bash
+apt-get update && apt-get install -y git && git clone -b claude/zen-keller-nrxmt4 https://github.com/steambizlux-prog/wallet-dev-searcher.git /root/wallet-dev-searcher && bash /root/wallet-dev-searcher/deploy/install.sh
+```
+
+Обновить до свежей версии потом: `bash /opt/wallet-dev-searcher/deploy/update.sh`.
+
+Важно: один и тот же бот не должен работать в двух местах сразу (например, на ПК и на сервере) —
+Telegram отдаёт обновления только одному экземпляру, второй будет падать с ошибкой Conflict.
+Перед запуском на сервере остановите бота на ПК.
+
 ### Что вписать в `.env`
 
 | Переменная | Что это |
