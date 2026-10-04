@@ -21,6 +21,7 @@ def test_coerce_values():
     assert coerce_value("paused", "on") is True
     assert coerce_value("server_filters", "выкл") is False
     assert coerce_value("platforms", "pump, bonk letsbonk") == ("Pump.fun", "letsbonk")
+    assert coerce_value("platforms", "pump stonk") == ("Pump.fun", "stonkfun")
     with pytest.raises(SettingsError):
         coerce_value("max_dev_tokens", "abc")
     with pytest.raises(SettingsError):
@@ -33,6 +34,9 @@ def test_normalize_platform():
     assert normalize_platform("PUMP.FUN") == "Pump.fun"
     assert normalize_platform("пампфан") == "Pump.fun"
     assert normalize_platform("bonk.fun") == "letsbonk"
+    assert normalize_platform("stonk") == "stonkfun"
+    assert normalize_platform("СТОНКФАН") == "stonkfun"
+    assert normalize_platform("stonk.fun") == "stonkfun"
     assert normalize_platform("newpad") == "newpad"
 
 

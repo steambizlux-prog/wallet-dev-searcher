@@ -28,6 +28,7 @@ BOT_COMMANDS = [
     BotCommand(command="set_migrate", description="Мин. % мигрейтов у дева"),
     BotCommand(command="set_maxtokens", description="Макс. токенов у дева"),
     BotCommand(command="platforms", description="Лаунчпады"),
+    BotCommand(command="platforms_seen", description="Какие лаунчпады видит GMGN"),
     BotCommand(command="pause", description="Пауза"),
     BotCommand(command="resume", description="Продолжить"),
     BotCommand(command="check", description="Проверить дева по кошельку"),

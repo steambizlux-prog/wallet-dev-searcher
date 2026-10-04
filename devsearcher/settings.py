@@ -15,13 +15,15 @@ KNOWN_SOL_PLATFORMS = (
     "letsbonk", "bonkers", "bags", "memoo", "liquid", "bankr", "zora", "surge",
     "anoncoin", "moonshot_app", "wendotdev", "heaven", "sugar", "token_mill",
     "believe", "trendsfun", "trends_fun", "jup_studio", "Moonshot", "boop",
-    "ray_launchpad", "meteora_virtual_curve", "xstocks",
+    "ray_launchpad", "meteora_virtual_curve", "xstocks", "stonkfun",
 )
 
 PLATFORM_ALIASES = {
     "pump": "Pump.fun", "pumpfun": "Pump.fun", "pump.fun": "Pump.fun", "пампфан": "Pump.fun",
     "bonk": "letsbonk", "bonkfun": "letsbonk", "bonk.fun": "letsbonk", "letsbonk.fun": "letsbonk",
     "бонк": "letsbonk", "бонкфан": "letsbonk",
+    "stonk": "stonkfun", "stonk.fun": "stonkfun", "stonkfun.xyz": "stonkfun", "stonk_fun": "stonkfun",
+    "стонк": "stonkfun", "стонкфан": "stonkfun", "стонк.фан": "stonkfun",
 }
 
 

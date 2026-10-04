@@ -76,7 +76,8 @@ sudo -u devsearcher venv/bin/python scripts/check_api.py --limit 5
 | `/set_maxtokens 1000` | максимум запусков у дева |
 | `/set_mintokens 5` | минимум запусков у дева |
 | `/set_interval 30` | интервал опроса, сек |
-| `/platforms Pump.fun letsbonk` | какие лаунчпады смотреть (понимает `pump`, `bonk`) |
+| `/platforms pump stonk` | какие лаунчпады смотреть (понимает `pump`, `bonk`, `stonk`; точные имена GMGN: `Pump.fun`, `letsbonk`, `stonkfun`) |
+| `/platforms_seen` | под какими именами GMGN отдаёт лаунчпады прямо сейчас (чтобы добавить новый) |
 | `/pause`, `/resume` | остановить / продолжить |
 | `/check <кошелёк>` | проверить дева вручную по текущим критериям |
 | `/token <CA>` | найти дева по адресу токена и проверить |

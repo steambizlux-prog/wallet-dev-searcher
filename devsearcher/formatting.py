@@ -227,7 +227,8 @@ HELP_TEXT = """🤖 <b>Dev Wallet Searcher</b>
 /set_migrate &lt;%&gt; — минимальная доля мигрейтов у дева
 /set_maxtokens &lt;N&gt; — максимум запусков у дева
 /set_mintokens &lt;N&gt; — минимум запусков у дева
-/platforms [список] — показать/задать лаунчпады (Pump.fun, letsbonk, ...)
+/platforms [список] — показать/задать лаунчпады (pump, bonk, stonk, ...)
+/platforms_seen — под какими именами GMGN отдаёт лаунчпады сейчас
 /pause, /resume — остановить/продолжить сканирование
 /check &lt;кошелёк&gt; — проверить дева вручную
 /token &lt;CA&gt; — найти дева по токену и проверить

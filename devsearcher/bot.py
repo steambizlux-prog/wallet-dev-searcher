@@ -178,6 +178,40 @@ def build_router(ctx: BotContext) -> Router:
             return
         await _apply(message, platforms=value)
 
+    @router.message(Command("platforms_seen"))
+    async def cmd_platforms_seen(message: Message) -> None:
+        """Показать, под какими именами GMGN отдаёт лаунчпады в trenches (без фильтра по платформе)."""
+        wait = await message.answer("⏳ Запрашиваю список лаунчпадов у GMGN…")
+        settings = ctx.store.get()
+        try:
+            data = await ctx.gmgn.trenches(settings.chain, ("new_creation", "near_completion", "completed"),
+                                           platforms=None, limit=80)
+        except GmgnError as exc:
+            await wait.edit_text(_gmgn_error_text(exc))
+            return
+        counts: dict[str, dict[str, int]] = {}
+        for section, items in data.items():
+            if not isinstance(items, list):
+                continue
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                name = str(it.get("launchpad_platform") or it.get("launchpad") or "?")
+                counts.setdefault(name, {})
+                counts[name][section] = counts[name].get(section, 0) + 1
+        if not counts:
+            await wait.edit_text("GMGN вернул пустой список.")
+            return
+        lines = ["🏷 <b>Лаунчпады в ответе GMGN</b> (имя → сколько токенов по категориям)", ""]
+        for name, per in sorted(counts.items(), key=lambda kv: -sum(kv[1].values())):
+            per_s = ", ".join(f"{k}: {v}" for k, v in sorted(per.items()))
+            lines.append(f"• <code>{esc(name)}</code> — {esc(per_s)}")
+        lines += ["", "Добавить платформу: <code>/platforms Pump.fun stonkfun</code> (имена как выше).",
+                  "Если нужного лаунчпада нет в списке, GMGN не отдаёт его в выдаче по умолчанию: "
+                  "возьмите любой токен с него и выполните <code>/raw &lt;CA&gt;</code>, поле launchpad_platform "
+                  "покажет точное имя."]
+        await wait.edit_text("\n".join(lines))
+
     @router.message(Command("pause"))
     async def cmd_pause(message: Message) -> None:
         await _apply(message, paused=True)
