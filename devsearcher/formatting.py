@@ -78,12 +78,25 @@ def format_settings(s: Settings) -> str:
     return "\n".join(lines)
 
 
-def _fee_line(fee_sol: float | None, fee_raw: float | None, fee_key: str | None, unit: str) -> str:
-    if fee_sol is not None:
-        return fmt_sol(fee_sol)
-    if fee_raw is not None:
-        return f"{fee_raw:g} {unit.upper()}" + (f" ({fee_key})" if fee_key else "")
-    return "неизвестно"
+_FEE_LABELS = {"coin_creator_fee": "дева", "total_fee": "всего"}
+
+
+def _fee_line(fee_sol: float | None, fee_raw: float | None, fee_key: str | None, unit: str,
+              details: dict[str, float] | None = None) -> str:
+    if fee_sol is None:
+        if fee_raw is not None:
+            return f"{fee_raw:g} {unit.upper()}" + (f" ({fee_key})" if fee_key else "")
+        return "неизвестно"
+    text = fmt_sol(fee_sol)
+    if fee_key in _FEE_LABELS:
+        text += f" ({_FEE_LABELS[fee_key]})"
+    extras = []
+    for key, label in _FEE_LABELS.items():
+        if details and key in details and key != fee_key and unit == "sol":
+            extras.append(f"{label} {details[key]:.2f}")
+    if extras:
+        text += " · " + ", ".join(extras)
+    return text
 
 
 def format_match(cand: TokenCandidate, stats: DevStats, settings: Settings,
@@ -134,7 +147,7 @@ def format_match(cand: TokenCandidate, stats: DevStats, settings: Settings,
         "🪙 <b>Токен-триггер</b>",
         f"• {esc(cand.symbol or '?')} — {esc(cand.name or '')}".rstrip(" —"),
         f"• CA: <code>{esc(cand.address)}</code>",
-        f"• Fee: <b>{esc(_fee_line(fee_sol, cand.fee, cand.fee_key, settings.fee_unit))}</b>",
+        f"• Fee: <b>{esc(_fee_line(fee_sol, cand.fee, cand.fee_key, settings.fee_unit, cand.fee_details))}</b>",
         f"• Mcap: {fmt_usd(cand.market_cap)} | Ликв.: {fmt_usd(cand.liquidity)}"
         + (f" | Холдеров: {cand.holder_count}" if cand.holder_count is not None else ""),
         f"• Платформа: {esc(cand.platform or '?')} | Мигрейт: {fmt_ago(cand.event_timestamp)}",

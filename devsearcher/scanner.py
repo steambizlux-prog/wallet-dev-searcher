@@ -8,7 +8,7 @@ import time
 from typing import Any, Awaitable, Callable
 
 from .analyzer import (
-    DevExtra, DevStats, TokenCandidate, Verdict, evaluate_dev, extract_fee, fee_in_sol, fee_passes,
+    DevExtra, DevStats, TokenCandidate, Verdict, evaluate_dev, extract_fee, fee_fields, fee_in_sol, fee_passes,
     find_token_row, is_valid_sol_address, parse_candidate, parse_dev_extra, parse_dev_stats, platform_matches,
 )
 from .formatting import format_match
@@ -180,14 +180,7 @@ class Scanner:
         """Полная проверка одного мигрейта. Возвращает True, если отправлено уведомление."""
         sol_price = await self._sol_price_if_needed(settings)
 
-        # 1) fee из списка мигрейтов (если поле есть)
-        fee_ok = fee_passes(cand.fee, settings, sol_price)
-        if fee_ok is False:
-            self.storage.incr("fee_rejected")
-            self.storage.mark_seen(cand.address, "low_fee", f"{cand.fee}")
-            return False
-
-        # 2) дев-кошелёк
+        # 1) дев-кошелёк
         creator = cand.creator
         info: dict[str, Any] | None = None
         if not creator or not is_valid_sol_address(creator):
@@ -199,17 +192,18 @@ class Scanner:
             return False
         cand.creator = creator
 
-        # 3) история запусков дева
+        # 2) история запусков дева (нужна и для fee, и для критериев)
         created = await self._created_tokens_cached(settings.chain, creator)
         stats = parse_dev_stats(created, creator)
 
-        # 4) fee, если в списке мигрейтов его не было — берём из строки этого токена у дева
-        if fee_ok is None:
-            row = find_token_row(created, cand.address)
-            fee, key = extract_fee(row)
-            if fee is not None:
-                cand.fee, cand.fee_key = fee, key
-                fee_ok = fee_passes(fee, settings, sol_price)
+        # 3) fee токена: в первую очередь из строки этого токена у дева (coin_creator_fee в SOL),
+        #    запасной вариант — поля из списка мигрейтов
+        row = find_token_row(created, cand.address)
+        fee, key = extract_fee(row)
+        if fee is not None:
+            cand.fee, cand.fee_key = fee, key
+            cand.fee_details = fee_fields(row)
+        fee_ok = fee_passes(cand.fee, settings, sol_price)
         if fee_ok is None:
             self.storage.incr("fee_unknown")
             self._warn_no_fee(cand, settings, sol_price)
@@ -219,6 +213,8 @@ class Scanner:
         elif fee_ok is False:
             self.storage.incr("fee_rejected")
             self.storage.mark_seen(cand.address, "low_fee", f"{cand.fee}")
+            log.info("%s: fee %.3f (%s) < %g — пропуск", cand.symbol or cand.address, cand.fee, cand.fee_key,
+                     settings.min_fee_sol)
             return False
         else:
             self.storage.incr("fee_passed")
@@ -249,8 +245,9 @@ class Scanner:
                                   stats.ratio_percent, {"fee_key": cand.fee_key, "platform": cand.platform})
         self.storage.incr("matches")
         self.storage.mark_seen(cand.address, "match", creator)
-        log.info("СОВПАДЕНИЕ: дев %s (%d/%d, %.1f%%) по токену %s", creator, stats.migrated, stats.total,
-                 stats.ratio_percent, cand.symbol or cand.address)
+        log.info("СОВПАДЕНИЕ: дев %s (%d/%d, %.1f%%) по токену %s, fee %s (%s)", creator, stats.migrated,
+                 stats.total, stats.ratio_percent, cand.symbol or cand.address,
+                 f"{cand.fee:.2f}" if cand.fee is not None else "?", cand.fee_key)
         return True
 
     # ---------- вспомогательное ----------

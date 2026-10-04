@@ -13,7 +13,7 @@ from aiogram.types import (
     CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageOriginChannel, MessageOriginChat,
 )
 
-from .analyzer import extract_fee, find_token_row, is_valid_sol_address, parse_dev_extra
+from .analyzer import extract_fee, find_token_row, is_valid_sol_address, parse_candidate, parse_dev_extra
 from .config import AppConfig
 from .formatting import (
     HELP_TEXT, esc, format_dev_check, format_matches_list, format_settings, format_status, gmgn_wallet_url,
@@ -408,6 +408,14 @@ def build_router(ctx: BotContext) -> Router:
         settings = ctx.store.get()
         out: dict[str, Any] = {}
         cand = ctx.scanner.cached_candidate(address)
+        if cand is None:
+            try:
+                for it in await ctx.gmgn.completed_tokens(settings.chain, settings.platforms, limit=80):
+                    if str(it.get("address") or "") == address:
+                        cand = parse_candidate(it)
+                        break
+            except GmgnError as exc:
+                out["trenches_error"] = str(exc)
         if cand is not None:
             raw = cand.raw
             keys = [k for k in raw if "fee" in k.lower() or k in (

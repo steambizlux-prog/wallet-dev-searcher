@@ -10,8 +10,12 @@ from .settings import Settings
 
 _SOL_ADDRESS_RE = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 
-# В каком порядке ищем поле fee в объекте токена (trenches item / created_tokens row).
-FEE_KEYS: tuple[str, ...] = ("total_fee", "creator_fee", "coin_creator_fee", "dev_fee", "fee", "fees")
+# В каком порядке ищем поле fee в объекте токена (строка created_tokens / элемент trenches).
+# coin_creator_fee — заработок дева с токена, GMGN явно указывает валюту (coin_creator_fee_token_symbol = SOL).
+# total_fee — суммарный fee токена (по наблюдениям тоже в SOL). Берём первое ПОЛОЖИТЕЛЬНОЕ значение по порядку,
+# если все нули — первое найденное (0).
+FEE_KEYS: tuple[str, ...] = ("coin_creator_fee", "total_fee", "creator_fee", "dev_fee", "fee", "fees")
+_SOL_SYMBOLS = ("SOL", "WSOL")
 
 
 def is_valid_sol_address(value: str) -> bool:
@@ -54,16 +58,40 @@ def to_int(value: Any) -> int | None:
     return int(f) if f is not None else None
 
 
-def extract_fee(obj: dict[str, Any] | None) -> tuple[float | None, str | None]:
-    """Возвращает (fee, имя_поля). Берётся первое непустое поле из FEE_KEYS."""
-    if not obj:
-        return None, None
+def fee_fields(obj: dict[str, Any] | None) -> dict[str, float]:
+    """Все известные fee-поля объекта с числовыми значениями (для показа в сообщении)."""
+    out: dict[str, float] = {}
     for key in FEE_KEYS:
-        if key in obj:
+        if obj and key in obj:
             val = to_float(obj.get(key))
             if val is not None:
-                return val, key
-    return None, None
+                out[key] = val
+    return out
+
+
+def extract_fee(obj: dict[str, Any] | None) -> tuple[float | None, str | None]:
+    """Возвращает (fee в SOL, имя_поля): первое положительное поле из FEE_KEYS, иначе первое найденное.
+
+    coin_creator_fee учитывается, только если его валюта SOL (или не указана).
+    """
+    if not obj:
+        return None, None
+    first: tuple[float | None, str | None] = (None, None)
+    for key in FEE_KEYS:
+        if key not in obj:
+            continue
+        val = to_float(obj.get(key))
+        if val is None:
+            continue
+        if key == "coin_creator_fee":
+            sym = str(obj.get("coin_creator_fee_token_symbol") or "").upper()
+            if sym and sym not in _SOL_SYMBOLS:
+                continue
+        if val > 0:
+            return val, key
+        if first[0] is None:
+            first = (val, key)
+    return first
 
 
 @dataclass
@@ -80,6 +108,7 @@ class TokenCandidate:
     holder_count: int | None = None
     open_timestamp: int | None = None
     created_timestamp: int | None = None
+    fee_details: dict[str, float] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -107,6 +136,7 @@ def parse_candidate(item: dict[str, Any]) -> TokenCandidate:
         holder_count=to_int(item.get("holder_count")),
         open_timestamp=to_int(item.get("open_timestamp")),
         created_timestamp=to_int(item.get("created_timestamp") or item.get("creation_timestamp")),
+        fee_details=fee_fields(item),
         raw=item,
     )
 
@@ -278,7 +308,7 @@ def parse_dev_extra(info: dict[str, Any] | None) -> DevExtra:
 
 __all__ = [
     "FEE_KEYS", "TokenCandidate", "DevStats", "Verdict", "DevExtra",
-    "is_valid_sol_address", "platform_matches", "to_float", "to_int", "extract_fee", "parse_candidate",
+    "is_valid_sol_address", "platform_matches", "to_float", "to_int", "extract_fee", "fee_fields", "parse_candidate",
     "parse_dev_stats", "find_token_row", "evaluate_dev", "fee_threshold", "fee_passes",
     "fee_in_sol", "parse_dev_extra",
 ]

@@ -43,7 +43,9 @@ class FakeGmgn(GmgnClient):
         self.created = {
             DEV_GOOD: {"inner_count": 90, "open_count": 10, "open_ratio": "0.1",
                        "creator_ath_info": {"ath_mc": "500000", "token_symbol": "ATH", "ath_token": TOK["good"]},
-                       "tokens": [{"token_address": TOK["nofee"], "is_open": True, "total_fee": "5"}]},
+                       "tokens": [{"token_address": TOK["nofee"], "is_open": True, "total_fee": "5"},
+                                  {"token_address": TOK["good"], "is_open": True, "coin_creator_fee": 13.78,
+                                   "coin_creator_fee_token_symbol": "SOL", "total_fee": "10.2"}]},
             DEV_BAD: {"inner_count": 990, "open_count": 10, "tokens": []},
         }
 
@@ -84,7 +86,8 @@ async def test_poll_once_filters_and_alerts(env):
     msg = sent[0]
     assert f"<code>{DEV_GOOD}</code>" in msg
     assert f"https://gmgn.ai/sol/address/{DEV_GOOD}" in msg
-    assert "10</b> (10.0%)" in msg and "2.50 SOL" in msg
+    assert "10</b> (10.0%)" in msg
+    assert "13.78 SOL (дева) · всего 10.20" in msg  # fee из строки дева важнее поля из списка мигрейтов
     assert "Фандинг с" in msg
 
     assert storage.seen_status(TOK["good"]) == "match"
