@@ -44,6 +44,14 @@ async def run() -> int:
         print(f"Ошибка конфигурации: {exc}", file=sys.stderr)
         return 2
 
+    # Windows: консоль/перенаправление в файл могут быть не в UTF-8 — не падать на эмодзи в логах
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
     logging.basicConfig(
         level=getattr(logging, config.log_level, logging.INFO),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",

@@ -90,7 +90,27 @@ sudo -u devsearcher venv/bin/python scripts/check_api.py --limit 5
 `max_creator_created_count`, `min_creator_created_open_ratio`, `min_total_fee`; меньше запросов),
 `request_gap_sec` (пауза между запросами к GMGN; Free-тариф ≈ 5 ед/с, trenches и created_tokens стоят по 2).
 
-## Запуск без systemd (для теста)
+## Запуск на Windows (потестить на своём ПК)
+
+1. Установите Python 3.10+ с https://www.python.org/downloads/ (в установщике поставьте галочку
+   **Add python.exe to PATH**).
+2. Скачайте репозиторий (Code → Download ZIP, распакуйте) или `git clone`.
+3. Запустите `run_windows.bat`: он создаст `venv`, поставит зависимости и откроет `.env` в Блокноте.
+4. Впишите `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `GMGN_API_KEY` (см. «Что вписать в .env» выше),
+   сохраните, закройте Блокнот.
+5. Ещё раз запустите `run_windows.bat` — бот стартует в этом окне. Остановить: `Ctrl+C` или закрыть окно.
+
+Ключ GMGN на Windows: `venv\Scripts\python scripts\gen_gmgn_keypair.py` (нужна либо библиотека
+`cryptography` — `venv\Scripts\python -m pip install cryptography`, — либо openssl, который ставится
+вместе с Git for Windows). Скрипт напечатает публичный ключ для формы на https://gmgn.ai/ai.
+Альтернатива: `npm install -g gmgn-cli` и `gmgn-cli config` — выдаст ссылку с уже подставленным ключом.
+
+Проверить сырые поля GMGN (единицы fee и т. п.): `check_api_windows.bat`.
+
+Данные (`settings.json`, база) лежат в папке `data` рядом с кодом — чтобы потом перенести настройки
+на VPS, достаточно скопировать `data/settings.json`.
+
+## Запуск без systemd (Linux, для теста)
 
 ```bash
 python3 -m venv venv && venv/bin/pip install -r requirements.txt
