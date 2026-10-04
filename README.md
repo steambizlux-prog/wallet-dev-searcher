@@ -100,10 +100,10 @@ sudo -u devsearcher venv/bin/python scripts/check_api.py --limit 5
    сохраните, закройте Блокнот.
 5. Ещё раз запустите `run_windows.bat` — бот стартует в этом окне. Остановить: `Ctrl+C` или закрыть окно.
 
-Ключ GMGN на Windows: `venv\Scripts\python scripts\gen_gmgn_keypair.py` (нужна либо библиотека
-`cryptography` — `venv\Scripts\python -m pip install cryptography`, — либо openssl, который ставится
-вместе с Git for Windows). Скрипт напечатает публичный ключ для формы на https://gmgn.ai/ai.
-Альтернатива: `npm install -g gmgn-cli` и `gmgn-cli config` — выдаст ссылку с уже подставленным ключом.
+Ключ GMGN на Windows: запустите `get_gmgn_key_windows.bat` — он сгенерирует пару ключей, скопирует
+публичный ключ в буфер обмена и откроет https://gmgn.ai/ai. Вставьте ключ в форму создания API Key,
+полученный `gmgn_...` впишите в `.env`. (То же руками: `venv\Scripts\python -m pip install cryptography`,
+затем `venv\Scripts\python scripts\gen_gmgn_keypair.py`.)
 
 Проверить сырые поля GMGN (единицы fee и т. п.): `check_api_windows.bat`.
 

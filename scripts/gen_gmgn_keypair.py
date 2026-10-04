@@ -13,9 +13,13 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 
-OUT_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.home() / ".config" / "gmgn"
+GMGN_URL = "https://gmgn.ai/ai"
+
+_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+OUT_DIR = Path(_args[0]) if _args else Path.home() / ".config" / "gmgn"
 PRIV = OUT_DIR / "gmgn_private.pem"
 PUB = OUT_DIR / "gmgn_public.pem"
 
@@ -71,11 +75,20 @@ def main() -> int:
         print(f"  {sys.executable} -m pip install cryptography")
         print("и запустите скрипт ещё раз.")
         return 1
+    pub = PUB.read_text(encoding="utf-8")
     print(f"Приватный ключ: {PRIV}  (никому не показывать)")
     print()
-    print("Публичный ключ — вставьте его в форму создания API Key на https://gmgn.ai/ai :")
+    print(f"Публичный ключ — вставьте его в форму создания API Key на {GMGN_URL} :")
     print()
-    print(PUB.read_text(encoding="utf-8"))
+    print(pub)
+    if sys.platform == "win32":
+        try:
+            subprocess.run("clip", input=pub.encode("ascii"), check=True, shell=True)
+            print("Публичный ключ скопирован в буфер обмена — просто вставьте его (Ctrl+V) в форму на сайте.")
+        except (OSError, subprocess.CalledProcessError):
+            pass
+    if "--no-browser" not in sys.argv:
+        webbrowser.open(GMGN_URL)
     return 0
 
 
