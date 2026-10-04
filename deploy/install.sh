@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Установка на Ubuntu 22.04/24.04. Запускать от root: sudo bash deploy/install.sh
 set -euo pipefail
+# без интерактивных вопросов apt/needrestart ("Which services should be restarted?")
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 
 APP_DIR=/opt/wallet-dev-searcher
 SERVICE=wallet-dev-searcher
