@@ -87,7 +87,7 @@ async def test_poll_once_filters_and_alerts(env):
     assert f"<code>{DEV_GOOD}</code>" in msg
     assert f"https://gmgn.ai/sol/address/{DEV_GOOD}" in msg
     assert "10</b> (10.0%)" in msg
-    assert "13.78 SOL (дева) · всего 10.20" in msg  # fee из строки дева важнее поля из списка мигрейтов
+    assert "10.20 SOL (Total Fees) · дева 13.78" in msg  # total_fee из строки дева, как на странице GMGN
     assert "Фандинг с" in msg
 
     assert storage.seen_status(TOK["good"]) == "match"

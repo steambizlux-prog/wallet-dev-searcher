@@ -78,7 +78,7 @@ def format_settings(s: Settings) -> str:
     return "\n".join(lines)
 
 
-_FEE_LABELS = {"coin_creator_fee": "дева", "total_fee": "всего"}
+_FEE_LABELS = {"total_fee": "Total Fees", "coin_creator_fee": "дева"}
 
 
 def _fee_line(fee_sol: float | None, fee_raw: float | None, fee_key: str | None, unit: str,

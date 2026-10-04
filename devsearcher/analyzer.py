@@ -10,11 +10,10 @@ from .settings import Settings
 
 _SOL_ADDRESS_RE = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 
-# В каком порядке ищем поле fee в объекте токена (строка created_tokens / элемент trenches).
-# coin_creator_fee — заработок дева с токена, GMGN явно указывает валюту (coin_creator_fee_token_symbol = SOL).
-# total_fee — суммарный fee токена (по наблюдениям тоже в SOL). Берём первое ПОЛОЖИТЕЛЬНОЕ значение по порядку,
-# если все нули — первое найденное (0).
-FEE_KEYS: tuple[str, ...] = ("coin_creator_fee", "total_fee", "creator_fee", "dev_fee", "fee", "fees")
+# Поле fee токена. total_fee — это «Total Fees», которое GMGN показывает на странице токена (в SOL),
+# именно по нему фильтруем. Остальные ключи — запасные варианты, если total_fee в ответе нет.
+# coin_creator_fee (заработок дева) используется последним и только если валюта SOL.
+FEE_KEYS: tuple[str, ...] = ("total_fee", "creator_fee", "dev_fee", "fee", "fees", "coin_creator_fee")
 _SOL_SYMBOLS = ("SOL", "WSOL")
 
 
@@ -70,13 +69,12 @@ def fee_fields(obj: dict[str, Any] | None) -> dict[str, float]:
 
 
 def extract_fee(obj: dict[str, Any] | None) -> tuple[float | None, str | None]:
-    """Возвращает (fee в SOL, имя_поля): первое положительное поле из FEE_KEYS, иначе первое найденное.
+    """Возвращает (fee в SOL, имя_поля): первое ПРИСУТСТВУЮЩЕЕ поле из FEE_KEYS, даже если оно равно 0.
 
-    coin_creator_fee учитывается, только если его валюта SOL (или не указана).
+    total_fee всегда важнее остальных. coin_creator_fee учитывается, только если его валюта SOL.
     """
     if not obj:
         return None, None
-    first: tuple[float | None, str | None] = (None, None)
     for key in FEE_KEYS:
         if key not in obj:
             continue
@@ -87,11 +85,8 @@ def extract_fee(obj: dict[str, Any] | None) -> tuple[float | None, str | None]:
             sym = str(obj.get("coin_creator_fee_token_symbol") or "").upper()
             if sym and sym not in _SOL_SYMBOLS:
                 continue
-        if val > 0:
-            return val, key
-        if first[0] is None:
-            first = (val, key)
-    return first
+        return val, key
+    return None, None
 
 
 @dataclass

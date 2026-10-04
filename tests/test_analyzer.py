@@ -5,17 +5,16 @@ from devsearcher.analyzer import (
 from devsearcher.settings import Settings
 
 
-def test_extract_fee_prefers_creator_fee_in_sol():
-    row = {"coin_creator_fee": 13.785, "coin_creator_fee_token_symbol": "SOL", "total_fee": "10.2035"}
-    assert extract_fee(row) == (13.785, "coin_creator_fee")
-    # creator fee нулевой — берём следующее положительное
-    assert extract_fee({"total_fee": "2.5", "coin_creator_fee": 0}) == (2.5, "total_fee")
-    # creator fee не в SOL — пропускаем это поле
-    assert extract_fee({"coin_creator_fee": 500, "coin_creator_fee_token_symbol": "USDC", "total_fee": "3"}) == (3.0, "total_fee")
+def test_extract_fee_total_fee_is_authoritative():
+    # total_fee = "Total Fees" на странице GMGN; берётся всегда, даже нулевой
+    row = {"coin_creator_fee": 14.33, "coin_creator_fee_token_symbol": "SOL", "total_fee": "0.0051"}
+    assert extract_fee(row) == (0.0051, "total_fee")
+    assert extract_fee({"total_fee": "0", "coin_creator_fee": 14.33}) == (0.0, "total_fee")
+    assert extract_fee({"coin_creator_fee": 13.785, "coin_creator_fee_token_symbol": "SOL", "total_fee": "10.2"}) == (10.2, "total_fee")
+    # нет total_fee — запасные поля, coin_creator_fee последним и только в SOL
     assert extract_fee({"coin_creator_fee": "0.7"}) == (0.7, "coin_creator_fee")
+    assert extract_fee({"coin_creator_fee": 500, "coin_creator_fee_token_symbol": "USDC"}) == (None, None)
     assert extract_fee({"total_fee": "", "fee": "1"}) == (1.0, "fee")
-    # все нули — возвращаем 0 (fee известен и мал)
-    assert extract_fee({"coin_creator_fee": 0, "total_fee": "0"}) == (0.0, "coin_creator_fee")
     assert extract_fee({"symbol": "X"}) == (None, None)
     assert extract_fee(None) == (None, None)
 
