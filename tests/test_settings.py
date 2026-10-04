@@ -2,7 +2,9 @@ import json
 
 import pytest
 
-from devsearcher.settings import Settings, SettingsError, SettingsStore, coerce_value, normalize_platform
+from devsearcher.settings import (
+    Settings, SettingsError, SettingsStore, chat_ref_to_target, coerce_value, is_valid_chat_ref, normalize_platform,
+)
 
 
 def test_defaults_match_task():
@@ -79,3 +81,15 @@ def test_store_rejects_broken_file(tmp_path):
     path.write_text("{not json", encoding="utf-8")
     with pytest.raises(SettingsError):
         SettingsStore(path)
+
+
+def test_alert_chat_id():
+    assert coerce_value("alert_chat_id", " -1001234567890 ") == "-1001234567890"
+    assert coerce_value("alert_chat_id", "@my_channel") == "@my_channel"
+    assert coerce_value("alert_chat_id", "default") == ""
+    assert is_valid_chat_ref("-1001234567890") and is_valid_chat_ref("@abcde")
+    assert not is_valid_chat_ref("my channel") and not is_valid_chat_ref("@ab")
+    assert chat_ref_to_target("-100123") == -100123 and chat_ref_to_target("@name") == "@name"
+    with pytest.raises(SettingsError):
+        Settings(alert_chat_id="not a chat").validate()
+    Settings(alert_chat_id="@chan_1").validate()

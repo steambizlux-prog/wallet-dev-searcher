@@ -9,7 +9,9 @@ from typing import Any
 
 from aiogram import Bot, F, Router
 from aiogram.filters import BaseFilter, Command, CommandObject, CommandStart
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageOriginChannel, MessageOriginChat,
+)
 
 from .analyzer import extract_fee, find_token_row, is_valid_sol_address, parse_dev_extra
 from .config import AppConfig
@@ -18,7 +20,7 @@ from .formatting import (
 )
 from .gmgn import GmgnClient, GmgnError, GmgnRateLimited
 from .scanner import Scanner
-from .settings import KNOWN_SOL_PLATFORMS, SettingsError, SettingsStore
+from .settings import KNOWN_SOL_PLATFORMS, SettingsError, SettingsStore, chat_ref_to_target, is_valid_chat_ref
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -33,6 +35,20 @@ class BotContext:
     storage: Storage
     scanner: Scanner
     gmgn: GmgnClient
+
+    def alert_target(self) -> int | str:
+        """Куда уходят находки: настройка alert_chat_id, иначе TELEGRAM_CHAT_ID из .env."""
+        ref = self.store.get().alert_chat_id
+        return chat_ref_to_target(ref) if ref else self.config.telegram_chat_id
+
+
+CHANNEL_HELP = (
+    "Как подключить канал:\n"
+    "1. Создайте канал, добавьте этого бота администратором с правом «Публиковать сообщения».\n"
+    "2. Перешлите сюда любой пост из канала — я определю id и предложу кнопку.\n"
+    "Или вручную: <code>/channel @username</code> (публичный канал) либо <code>/channel -1001234567890</code>.\n"
+    "Вернуть по умолчанию: <code>/channel default</code>."
+)
 
 
 class AdminFilter(BaseFilter):
@@ -117,7 +133,9 @@ def build_router(ctx: BotContext) -> Router:
 
     @router.message(Command("status"))
     async def cmd_status(message: Message) -> None:
-        await message.answer(format_status(ctx.scanner.status(), ctx.store.get(), ctx.storage.counters()))
+        info = ctx.scanner.status()
+        info["alert_target"] = ctx.alert_target()
+        await message.answer(format_status(info, ctx.store.get(), ctx.storage.counters()))
 
     @router.message(Command("settings"))
     async def cmd_settings(message: Message) -> None:
@@ -220,6 +238,64 @@ def build_router(ctx: BotContext) -> Router:
                   "возьмите любой токен с него и выполните <code>/raw &lt;CA&gt;</code>, поле launchpad_platform "
                   "покажет точное имя."]
         await wait.edit_text("\n".join(lines))
+
+    async def _try_channel(message: Message, ref: str) -> None:
+        try:
+            s = ctx.store.update(alert_chat_id=ref)
+        except SettingsError as exc:
+            await message.answer(f"❌ {esc(exc)}")
+            return
+        target = ctx.alert_target()
+        try:
+            await message.bot.send_message(target, "✅ Канал подключён: сюда будут приходить найденные дев-кошельки.")  # type: ignore[union-attr]
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(
+                f"⚠️ Настройка сохранена, но отправить в <code>{esc(target)}</code> не удалось:\n"
+                f"<code>{esc(str(exc)[:300])}</code>\n\n"
+                "Проверьте, что бот добавлен в канал администратором с правом публиковать сообщения."
+            )
+            return
+        await message.answer(f"✅ Находки теперь идут в <code>{esc(s.alert_chat_id or ctx.config.telegram_chat_id)}</code>.")
+
+    @router.message(Command("channel"))
+    async def cmd_channel(message: Message, command: CommandObject) -> None:
+        value = (command.args or "").strip()
+        if not value:
+            await message.answer(
+                f"Сейчас находки идут в: <code>{esc(ctx.alert_target())}</code>\n\n{CHANNEL_HELP}"
+            )
+            return
+        await _try_channel(message, value)
+
+    @router.message(F.forward_origin)
+    async def forwarded(message: Message) -> None:
+        origin = message.forward_origin
+        chat = None
+        if isinstance(origin, MessageOriginChannel):
+            chat = origin.chat
+        elif isinstance(origin, MessageOriginChat):
+            chat = origin.sender_chat
+        if chat is None:
+            await message.answer("Это пересылка не из канала. Перешлите пост из канала, куда слать находки.")
+            return
+        kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="📣 Слать находки в этот канал", callback_data=f"setchannel:{chat.id}"),
+        ]])
+        await message.answer(
+            f"Канал: <b>{esc(chat.title or '')}</b>\nid: <code>{chat.id}</code>"
+            + (f"\n@{esc(chat.username)}" if chat.username else ""),
+            reply_markup=kb,
+        )
+
+    @router.callback_query(F.data.startswith("setchannel:"))
+    async def cb_setchannel(query: CallbackQuery) -> None:
+        ref = (query.data or "").split(":", 1)[1]
+        if not is_valid_chat_ref(ref):
+            await query.answer("Некорректный id")
+            return
+        await query.answer()
+        if isinstance(query.message, Message):
+            await _try_channel(query.message, ref)
 
     @router.message(Command("pause"))
     async def cmd_pause(message: Message) -> None:
@@ -380,8 +456,8 @@ def build_router(ctx: BotContext) -> Router:
             f"👛 Кошелёк: <code>{wallet}</code>\n"
             f"🔗 <a href=\"{gmgn_wallet_url(ctx.store.get().chain, wallet)}\">Открыть кошелёк на GMGN</a>"
         )
-        if message.chat.id != ctx.config.telegram_chat_id:
-            await message.answer("Отправлено в чат уведомлений.")
+        if message.chat.id != ctx.alert_target():
+            await message.answer(f"Отправлено в <code>{esc(ctx.alert_target())}</code>.")
 
     return router
 
@@ -400,4 +476,4 @@ def build_public_router(ctx: BotContext) -> Router:
     return router
 
 
-__all__ = ["BotContext", "build_router", "build_public_router", "send_long", "split_message"]
+__all__ = ["BotContext", "CHANNEL_HELP", "build_router", "build_public_router", "send_long", "split_message"]

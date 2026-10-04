@@ -29,7 +29,7 @@ def _parse_ids(raw: str) -> list[int]:
 @dataclass(frozen=True)
 class AppConfig:
     telegram_bot_token: str
-    telegram_chat_id: int
+    telegram_chat_id: int | str   # id чата/канала или @username публичного канала
     admin_ids: frozenset[int]
     gmgn_api_key: str
     gmgn_api_host: str = "https://openapi.gmgn.ai"
@@ -59,14 +59,21 @@ def load_config(env_file: str | os.PathLike[str] | None = None) -> AppConfig:
     chat_raw = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
     if not chat_raw:
         raise ConfigError("Не задан TELEGRAM_CHAT_ID")
-    try:
-        chat_id = int(chat_raw)
-    except ValueError as exc:
-        raise ConfigError(f"TELEGRAM_CHAT_ID должен быть числом, получено {chat_raw!r}") from exc
+    chat_id: int | str
+    if chat_raw.startswith("@"):
+        chat_id = chat_raw
+    else:
+        try:
+            chat_id = int(chat_raw)
+        except ValueError as exc:
+            raise ConfigError(f"TELEGRAM_CHAT_ID должен быть числом или @username, получено {chat_raw!r}") from exc
 
     admins = set(_parse_ids(os.environ.get("TELEGRAM_ADMIN_IDS", "")))
     if not admins:
-        admins = {chat_id}
+        if isinstance(chat_id, int) and chat_id > 0:
+            admins = {chat_id}
+        else:
+            raise ConfigError("TELEGRAM_CHAT_ID указывает на канал/группу — задайте TELEGRAM_ADMIN_IDS (ваш личный id)")
 
     api_key = os.environ.get("GMGN_API_KEY", "").strip()
     if not api_key:

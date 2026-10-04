@@ -188,6 +188,8 @@ def format_status(info: dict[str, Any], settings: Settings, counters: dict[str, 
     lines.append(f"• Запросов к GMGN: {info.get('requests', 0)} (ошибок {info.get('errors', 0)}, "
                  f"429: {info.get('rate_limits', 0)})")
     lines.append(f"• Аптайм: {fmt_ago(info.get('started_at'), now).replace(' назад', '')}")
+    if info.get("alert_target") is not None:
+        lines.append(f"• Находки идут в: <code>{esc(info['alert_target'])}</code>")
     lines.append("")
     lines.append("📈 <b>Счётчики</b>")
     lines.append(f"• Мигрейтов увидено: {counters.get('tokens_seen', 0)}")
@@ -218,7 +220,7 @@ def format_matches_list(rows: list[dict[str, Any]], chain: str) -> str:
 
 HELP_TEXT = """🤖 <b>Dev Wallet Searcher</b>
 
-Бот смотрит свежие мигрейты (bonding curve → DEX) на выбранных лаунчпадах через GMGN, у токенов с fee ≥ порога берёт кошелёк дева и проверяет его историю запусков.
+Бот смотрит свежие мигрейты (bonding curve → DEX) на выбранных лаунчпадах через GMGN, у токенов с fee ≥ порога берёт кошелёк дева и проверяет его историю запусков. Находки уходят в канал (/channel), управление и служебные сообщения — только сюда, админам.
 
 <b>Команды</b>
 /status — состояние сканера и счётчики
@@ -231,6 +233,7 @@ HELP_TEXT = """🤖 <b>Dev Wallet Searcher</b>
 /set_mintokens &lt;N&gt; — минимум запусков у дева
 /platforms [список] — показать/задать лаунчпады (pump, bonk, stonk, ...)
 /platforms_seen — под какими именами GMGN отдаёт лаунчпады сейчас
+/channel [id или @name] — куда слать находки (канал); можно просто переслать боту пост из канала
 /pause, /resume — остановить/продолжить сканирование
 /check &lt;кошелёк&gt; — проверить дева вручную
 /token &lt;CA&gt; — найти дева по токену и проверить

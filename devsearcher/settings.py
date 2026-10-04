@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from dataclasses import asdict, dataclass, field, fields, replace
 from pathlib import Path
@@ -61,6 +62,9 @@ class Settings:
     # Минимальный интервал между запросами к GMGN, сек (лимит Free-тарифа ~5 ед/с).
     request_gap_sec: float = 0.5
     paused: bool = False
+    # Куда слать находки: id канала/группы (-100...) или @username публичного канала.
+    # Пусто = TELEGRAM_CHAT_ID из .env. Служебные сообщения в канал не идут, только в личку админам.
+    alert_chat_id: str = ""
 
     def validate(self) -> None:
         if self.min_fee_sol < 0:
@@ -93,9 +97,34 @@ class Settings:
             raise SettingsError("request_gap_sec должен быть от 0.1 до 10")
         if self.chain != "sol":
             raise SettingsError("Поддерживается только chain=sol")
+        if self.alert_chat_id and not is_valid_chat_ref(self.alert_chat_id):
+            raise SettingsError("alert_chat_id: укажите id вида -1001234567890 или @username канала")
 
 
 _FIELD_TYPES = {f.name: f.type for f in fields(Settings)}
+
+_CHAT_USERNAME_RE = re.compile(r"^@[A-Za-z][A-Za-z0-9_]{3,31}$")
+
+
+def is_valid_chat_ref(value: str) -> bool:
+    """Ссылка на чат Telegram: числовой id (можно отрицательный) или @username."""
+    v = value.strip()
+    if _CHAT_USERNAME_RE.match(v):
+        return True
+    try:
+        int(v)
+        return True
+    except ValueError:
+        return False
+
+
+def chat_ref_to_target(value: str) -> int | str:
+    """Для Bot API: числовые id отдаём int, @username — строкой."""
+    v = value.strip()
+    try:
+        return int(v)
+    except ValueError:
+        return v
 
 
 def normalize_platform(name: str) -> str:
@@ -143,6 +172,11 @@ def coerce_value(name: str, raw: Any) -> Any:
             raise SettingsError(f"{name}: нужно целое число, получено {raw!r}") from exc
     if name in ("fee_unit", "fee_unknown_policy", "chain"):
         return str(raw).strip().lower()
+    if name == "alert_chat_id":
+        v = str(raw).strip()
+        if v.lower() in ("", "default", "off", "none", "-", "сброс"):
+            return ""
+        return v
     raise SettingsError(f"Настройка {name} не редактируется")
 
 
@@ -226,9 +260,11 @@ SETTING_LABELS: tuple[tuple[str, str, str], ...] = (
     ("server_filters", "Фильтры на стороне GMGN", ""),
     ("request_gap_sec", "Пауза между запросами", "сек"),
     ("paused", "Пауза сканера", ""),
+    ("alert_chat_id", "Куда слать находки", ""),
 )
 
 __all__ = [
     "Settings", "SettingsError", "SettingsStore", "SETTING_LABELS", "KNOWN_SOL_PLATFORMS",
     "coerce_value", "normalize_platform", "settings_from_dict", "settings_to_dict",
+    "is_valid_chat_ref", "chat_ref_to_target",
 ]

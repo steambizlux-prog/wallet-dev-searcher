@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+import time
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -16,7 +17,7 @@ from .bot import BotContext, build_public_router, build_router, send_long
 from .config import ConfigError, load_config
 from .gmgn import GmgnClient
 from .scanner import Scanner
-from .settings import SettingsError, SettingsStore
+from .settings import SettingsError, SettingsStore, chat_ref_to_target
 from .storage import Storage
 
 log = logging.getLogger("devsearcher")
@@ -30,6 +31,7 @@ BOT_COMMANDS = [
     BotCommand(command="set_maxtokens", description="Макс. токенов у дева"),
     BotCommand(command="platforms", description="Лаунчпады"),
     BotCommand(command="platforms_seen", description="Какие лаунчпады видит GMGN"),
+    BotCommand(command="channel", description="Куда слать находки (канал)"),
     BotCommand(command="pause", description="Пауза"),
     BotCommand(command="resume", description="Продолжить"),
     BotCommand(command="check", description="Проверить дева по кошельку"),
@@ -76,11 +78,33 @@ async def run() -> int:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML, link_preview_is_disabled=True),
     )
 
+    async def notify_admins(text: str) -> None:
+        """Служебные сообщения — только в личку админам, никогда в канал."""
+        for admin_id in sorted(config.admin_ids):
+            try:
+                await send_long(bot, admin_id, text)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Не удалось написать админу %s: %s", admin_id, exc)
+
+    last_alert_failure_at = 0.0
+
     async def notify(text: str) -> None:
+        """Находки — в канал (alert_chat_id) или в TELEGRAM_CHAT_ID."""
+        nonlocal last_alert_failure_at
+        ref = store.get().alert_chat_id
+        target = chat_ref_to_target(ref) if ref else config.telegram_chat_id
         try:
-            await send_long(bot, config.telegram_chat_id, text)
+            await send_long(bot, target, text)
         except Exception as exc:  # noqa: BLE001
-            log.error("Не удалось отправить уведомление в Telegram: %s", exc)
+            log.error("Не удалось отправить находку в %s: %s", target, exc)
+            if time.time() - last_alert_failure_at > 1800:
+                last_alert_failure_at = time.time()
+                await notify_admins(
+                    f"⚠️ Не удалось отправить находку в <code>{target}</code>: <code>{str(exc)[:300]}</code>\n"
+                    "Проверьте, что бот админ канала с правом публиковать. Настроить: /channel"
+                )
+                # чтобы находка не потерялась — дублируем админам
+                await notify_admins(text)
 
     scanner = Scanner(gmgn, store, storage, notify)
     ctx = BotContext(config=config, store=store, storage=storage, scanner=scanner, gmgn=gmgn)
@@ -103,10 +127,12 @@ async def run() -> int:
         except Exception as exc:  # noqa: BLE001
             log.warning("set_my_commands: %s", exc)
         s = store.get()
-        await notify(
+        target = chat_ref_to_target(s.alert_chat_id) if s.alert_chat_id else config.telegram_chat_id
+        await notify_admins(
             "🚀 <b>Dev Wallet Searcher запущен</b>\n"
-            f"fee ≥ {s.min_fee_sol:g} SOL · мигрейтов ≥ {s.min_migrate_percent:g}% · "
-            f"запусков {s.min_dev_tokens}–{s.max_dev_tokens} · платформы: {', '.join(s.platforms)}"
+            f"fee ≥ {s.min_fee_sol:g} SOL · мигрейтов ≥ {s.min_migrate_percent:g}% и ≥ {s.min_migrated_count} шт · "
+            f"запусков {s.min_dev_tokens}–{s.max_dev_tokens} · платформы: {', '.join(s.platforms)}\n"
+            f"Находки идут в: <code>{target}</code> (изменить: /channel)"
             + ("\n⏸ Сканер на паузе — /resume" if s.paused else "")
         )
         await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
